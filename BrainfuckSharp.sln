@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrainfuckSharp", "source\Br
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrainfuckSharp.Cli", "source\BrainfuckSharp.Cli\BrainfuckSharp.Cli.csproj", "{1566189B-0956-41FF-AA6A-BC1F71D25994}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BrainfuckSharp.Tests", "test\BrainfuckSharp.Tests\BrainfuckSharp.Tests.csproj", "{E81A2F7E-DA1A-4157-900C-E2A40C787F4E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{1566189B-0956-41FF-AA6A-BC1F71D25994}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1566189B-0956-41FF-AA6A-BC1F71D25994}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1566189B-0956-41FF-AA6A-BC1F71D25994}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E81A2F7E-DA1A-4157-900C-E2A40C787F4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E81A2F7E-DA1A-4157-900C-E2A40C787F4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E81A2F7E-DA1A-4157-900C-E2A40C787F4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E81A2F7E-DA1A-4157-900C-E2A40C787F4E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

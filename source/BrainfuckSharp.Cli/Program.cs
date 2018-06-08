@@ -7,11 +7,24 @@ namespace BrainfuckSharp.Cli
     static void Main(string[] args)
     {
       var memory = new int[1024];
-      while (true)
+      while (TryReadLine(out var line))
       {
-        var script = Brainfuck.Compile(Console.ReadLine());
-        script.Invoke(memory);
+        try
+        {
+          var script = Brainfuck.Compile(line);
+          script.Invoke(memory, Console.In, Console.Out);
+        }
+        catch (BrainfuckException err)
+        {
+          Console.Error.WriteLine($"Parser Exception: {err.Message}");
+        }
       }
+    }
+
+    static bool TryReadLine(out string line)
+    {
+      line = Console.ReadLine();
+      return !string.IsNullOrEmpty(line);
     }
   }
 }
