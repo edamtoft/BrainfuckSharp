@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace BrainfuckSharp
 {
@@ -17,12 +18,17 @@ namespace BrainfuckSharp
       var dataPointer = Expression.Variable(typeof(int), "dataPointer");
       var input = Expression.Variable(typeof(TextReader), "input");
       var output = Expression.Variable(typeof(TextWriter), "output");
+
       var expressions = Parse(source, dataArray, dataPointer, input, output);
+
       var block = Expression.Block(new[] { dataPointer }, expressions);
       return Expression.Lambda<Action<int[], TextReader, TextWriter>>(block, dataArray, input, output).Compile();
     }
 
-    private static IEnumerable<Expression> Parse(string source, ParameterExpression dataArray, ParameterExpression dataPointer, ParameterExpression input, ParameterExpression output)
+    private static readonly MethodInfo Read = typeof(TextReader).GetMethod(nameof(TextReader.Read), Type.EmptyTypes);
+    private static readonly MethodInfo Write = typeof(TextWriter).GetMethod(nameof(TextWriter.Write), new[] { typeof(char) });
+
+    private static IEnumerable<Expression> Parse(string source, Expression dataArray, Expression dataPointer, Expression input, Expression output)
     {
       var labels = new Stack<(LabelTarget start, LabelTarget end)>();
 
@@ -44,10 +50,10 @@ namespace BrainfuckSharp
             yield return Expression.PostDecrementAssign(data);
             break;
           case '.':
-            yield return Expression.Call(output, nameof(Console.Write), Type.EmptyTypes, Expression.Convert(data, typeof(char)));
+            yield return Expression.Call(output, Write, Expression.Convert(data, typeof(char)));
             break;
           case ',':
-            yield return Expression.Assign(data, Expression.Call(input, nameof(Console.Read), Type.EmptyTypes));
+            yield return Expression.Assign(data, Expression.Call(input, Read));
             break;
           case '[':
             {
@@ -68,6 +74,8 @@ namespace BrainfuckSharp
                 Expression.Goto(start));
               yield return Expression.Label(end);
             }
+            break;
+          case ' ':
             break;
           default:
             throw new BrainfuckException($"Syntax Error: Unexpected character '{c}'");
