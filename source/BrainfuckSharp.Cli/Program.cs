@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace BrainfuckSharp.Cli
 {
@@ -6,7 +7,7 @@ namespace BrainfuckSharp.Cli
   {
     static void Main(string[] args)
     {
-      var memory = new int[1024];
+      var memory = new byte[1024];
       while (TryReadLine(out var line))
       {
         try
