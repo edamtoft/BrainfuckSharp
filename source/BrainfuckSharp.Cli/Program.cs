@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace BrainfuckSharp.Cli
@@ -7,13 +8,12 @@ namespace BrainfuckSharp.Cli
   {
     static void Main(string[] args)
     {
-      var memory = new byte[1024];
       while (TryReadLine(out var line))
       {
         try
         {
-          var script = Brainfuck.Compile(line);
-          script.Invoke(memory, Console.In, Console.Out);
+          var script = Brainfuck.Compile(line.AsReadOnlySpan());
+          script(Console.In, Console.Out);
         }
         catch (BrainfuckException err)
         {

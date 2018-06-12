@@ -12,7 +12,7 @@ namespace BrainfuckSharp.Tests
       using (var output = new StringWriter())
       {
         var action = Brainfuck.Compile("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.");
-        action.Invoke(new byte[7], null, output);
+        action.Invoke(null, output);
         Assert.AreEqual("Hello World!", output.ToString());
       }
     }

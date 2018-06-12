@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace BrainfuckSharp
 {
@@ -12,73 +14,92 @@ namespace BrainfuckSharp
     /// Compiles a brainfuck string to an executable Linq expression
     /// </summary>
     /// <param name="source">Brainfuck source</param>
-    public static Expression<BrainfuckApp> Parse(string source)
+    public static BrainfuckApp Compile(ReadOnlySpan<char> source, int memorySize = 256)
     {
-      var memory = Expression.Parameter(typeof(byte[]), "memory");
-      var input = Expression.Parameter(typeof(TextReader), "input");
-      var output = Expression.Parameter(typeof(TextWriter), "output");
+      var signature = typeof(BrainfuckApp).GetMethod(nameof(BrainfuckApp.Invoke));
+      var method = new DynamicMethod("BrainfuckApp",
+        returnType: signature.ReturnType,
+        parameterTypes: signature.GetParameters().Select(p => p.ParameterType).ToArray());
 
-      var pointer = Expression.Variable(typeof(int), "pointer");
+      var il = method.GetILGenerator();
 
-      var block = Expression.Block(new[] { pointer }, Parse(source, memory, pointer, input, output));
+      il.DeclareLocal(typeof(byte[]));
+      il.DeclareLocal(typeof(int));
 
-      return Expression.Lambda<BrainfuckApp>(block, memory, input, output);
-    }
+      il.Emit(OpCodes.Ldc_I4, memorySize);
+      il.Emit(OpCodes.Newarr, typeof(byte));
+      il.Emit(OpCodes.Stloc_0);
 
-    public static BrainfuckApp Compile(string source) => Parse(source).Compile();
+      var labels = new Stack<Label>();
 
-    public static void Run(string source, byte[] memory = null, TextReader @in = null, TextWriter @out = null)
-    {
-      Compile(source)(
-        memory ?? new byte[1024], 
-        @in ?? Console.In, 
-        @out ?? Console.Out);
-    }
-
-    private static IEnumerable<Expression> Parse(string source, Expression memory, Expression pointer, Expression @in, Expression @out)
-    {
-      var labels = new Stack<(LabelTarget start, LabelTarget end)>();
-      foreach (var c in source)
+      for (var i = 0; i < source.Length; i++)
       {
+        var c = source[i];
         switch (c)
         {
           case '>':
-            yield return Expression.PreIncrementAssign(pointer);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stloc_1);
             break;
           case '<':
-            yield return Expression.PreDecrementAssign(pointer);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Sub);
+            il.Emit(OpCodes.Stloc_1);
             break;
           case '+':
-            yield return Expression.Call(typeof(Ops), nameof(Ops.IncrementData), Type.EmptyTypes, memory, pointer);
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldelem_U1, typeof(byte));
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Add);
+            il.Emit(OpCodes.Stelem, typeof(byte));
             break;
           case '-':
-            yield return Expression.Call(typeof(Ops), nameof(Ops.DecrementData), Type.EmptyTypes, memory, pointer);
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldelem, typeof(byte));
+            il.Emit(OpCodes.Ldc_I4_1);
+            il.Emit(OpCodes.Sub);
+            il.Emit(OpCodes.Stelem, typeof(byte));
             break;
           case '.':
-            yield return Expression.Call(typeof(Ops), nameof(Ops.Write), Type.EmptyTypes, memory, pointer, @out);
+            il.Emit(OpCodes.Ldarg_1);
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldelem, typeof(byte));
+            il.Emit(OpCodes.Callvirt, typeof(TextWriter).GetMethod(nameof(TextWriter.Write), new[] { typeof(char) }));
             break;
           case ',':
-            yield return Expression.Call(typeof(Ops), nameof(Ops.Read), Type.EmptyTypes, memory, pointer, @in);
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Callvirt, typeof(TextReader).GetMethod(nameof(TextReader.Read), Type.EmptyTypes));
+            il.Emit(OpCodes.Stelem, typeof(byte));
             break;
           case '[':
-            {
-              var start = Expression.Label("start");
-              var end = Expression.Label("end");
-              labels.Push((start, end));
-              yield return Expression.Label(start);
-              yield return Expression.IfThen(
-                Expression.Equal(Expression.ArrayAccess(memory, pointer), Expression.Constant((byte)0b0)),
-                Expression.Goto(end));
-            }
+            labels.Push(il.DefineLabel());
+            labels.Push(il.DefineLabel());
+            il.MarkLabel(labels.Peek());
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldelem, typeof(byte));
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Beq, labels.Peek());
             break;
           case ']':
-            {
-              var (start, end) = labels.Pop();
-              yield return Expression.IfThen(
-                Expression.NotEqual(Expression.ArrayAccess(memory, pointer), Expression.Constant((byte)0b0)),
-                Expression.Goto(start));
-              yield return Expression.Label(end);
-            }
+            il.Emit(OpCodes.Ldloc_0);
+            il.Emit(OpCodes.Ldloc_1);
+            il.Emit(OpCodes.Ldelem, typeof(byte));
+            il.Emit(OpCodes.Ldc_I4_0);
+            il.Emit(OpCodes.Bne_Un, labels.Pop());
+            il.MarkLabel(labels.Pop());
             break;
           case ' ':
             break;
@@ -87,10 +108,14 @@ namespace BrainfuckSharp
         }
       }
 
+      il.Emit(OpCodes.Ret);
+
       if (labels.Count > 0)
       {
-        throw new BrainfuckException($"Syntax Error: Unmatched open bracket");
+        throw new BrainfuckException($"Syntax Error: Unmatched brackets");
       }
+
+      return method.CreateDelegate(typeof(BrainfuckApp)) as BrainfuckApp;
     }
   }
 }

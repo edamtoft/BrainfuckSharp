@@ -5,5 +5,5 @@ using System.Text;
 
 namespace BrainfuckSharp
 {
-  public delegate void BrainfuckApp(byte[] memory, TextReader @in, TextWriter @out);
+  public delegate void BrainfuckApp(TextReader @in, TextWriter @out);
 }
